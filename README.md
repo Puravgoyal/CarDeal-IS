@@ -1,117 +1,153 @@
 # CarDeal IS
 
-A full-stack Car Dealership Inventory System for Incubyte Round 1.
+A modern, full-stack Car Dealership Inventory System for Incubyte Round 1. Built with a Test-Driven Development (TDD) workflow, strict software craftsmanship practices, and transparent AI pairing.
 
-**Status: Backend Complete & Fully Tested (Consolidated Stage 1). Frontend implementation pending (Stage 2).**
+## Planned vs. Implemented Functionality
 
-## Functionality Overview
-
-- **Authentication & Authorization**: User registration with scrypt password hashing, login with signed JWT issuance, and server-side role enforcement (`user` vs. `admin`).
-- **Vehicle Catalog**: Protected vehicle listing including zero-stock visibility with out-of-stock indicators.
+- **User Authentication**: Token-based authentication using signed JWTs. Passwords hashed using non-truncating `scrypt` with salt and constant-time equality checks.
+- **Role-Based Access**: Public registration defaults strictly to standard buyer privileges. Admin capabilities are managed server-side and provisioned via a dedicated local CLI tool.
+- **Vehicle Catalog**: Protected browsing of inventory with stock quantity tracking, including zero-stock visibility.
 - **Search & Filtering**: Multi-parameter search by make (case-insensitive substring), model (case-insensitive substring), category (case-insensitive exact match), and inclusive integer paise price bounds with SQL wildcard sanitization.
-- **Atomic Transactions & Inventory**: Single-unit purchases with atomic stock decrement (`WHERE quantity > 0`) preventing negative inventory under concurrency. Admin-only additive restock increments with positive integer validation.
-- **Persistent Storage**: Persistent file-backed SQLite database with automated migration application on startup.
+- **Atomic Transactions & Inventory**: Single-unit purchases with atomic stock decrement (`WHERE quantity > 0`) preventing negative inventory under concurrency. Admin-only additive restock increments with safe-integer validation.
+- **Frontend SPA**: Original React, TypeScript, HTML5, CSS3, and Tailwind CSS user interface adhering to agreed visual tokens and responsive layouts.
 
-## Technology Stack
+## Architecture & Technology Stack
 
-- **Backend**: Node.js (`v26.7.0`), TypeScript (`5.7.2`), Express (`4.21.2`)
-- **Database**: File-backed SQLite utilizing Node.js built-in `node:sqlite` (`DatabaseSync` with WAL journal mode)
-- **Security & Tokens**: Node built-in `crypto.scrypt` (salt + timing-safe equality), `jsonwebtoken` (`9.0.2`)
-- **Testing**: `vitest` (`2.1.8`), `supertest` (`7.0.0`)
-- **Frontend (Pending Stage 2)**: React, TypeScript, HTML5, CSS3, Tailwind CSS with Vite
+- **Backend API**: Node.js (`v26.7.0`), Express (`4.21.2`), TypeScript (`5.7.2`)
+- **Database**: File-backed SQLite utilizing Node.js native built-in `node:sqlite` (`DatabaseSync` with WAL journal mode)
+- **Security & Tokens**: Node built-in `crypto.scrypt`, `jsonwebtoken` (`9.0.2`) with brute-force rate limiting (`429 TOO_MANY_REQUESTS`)
+- **Testing**: `vitest` (`2.1.8`), `supertest` (`7.0.0`), `@testing-library/react` (`16.1.0`), `@testing-library/jest-dom` (`6.6.3`)
+- **Frontend SPA**: React (`18.3.1`), Vite (`5.4.11`), Tailwind CSS (`3.4.17`)
 
-## Guides & Specifications
+---
 
-- [Requirements and Decisions](PROJECT.md)
-- [Backend and Shared API Contract](BACKEND.md)
-- [Frontend Design and Visual States](FRONTEND.md)
-- [Development and Review Workflow](WORKFLOW.md)
-- [AI Conversation Records](PROMPTS.md)
-
-## Verified Local Backend Setup
+## Local Setup & Execution Guide
 
 ### Prerequisites
-- Node.js `v22.x` or `v26.x` (verified with `v26.7.0` using built-in `node:sqlite`)
-- npm `11.x`+
+- **Node.js**: `v22.x` or `v26.x` (verified with `v26.7.0`, requiring built-in `node:sqlite`)
+- **npm**: `11.x`+
 
 ### 1. Installation
-From the repository root:
+Install dependencies for both backend and frontend from the repository root:
 ```bash
-cd backend
-npm install
+# Install backend packages
+npm --prefix backend install
+
+# Install frontend packages
+npm --prefix frontend install
 ```
 
 ### 2. Environment Configuration
-Create a `.env` file in `backend/` (or copy from `backend/.env.example`):
-```bash
+Create a `.env` file inside `backend/` (or copy from `backend/.env.example`):
+```env
 PORT=4000
 DATABASE_PATH=./data/cardeal.db
-JWT_SECRET=cardeal_secure_dev_jwt_secret_key_at_least_32_chars!
+# Generate a secure private key (e.g., openssl rand -hex 32)
+JWT_SECRET=replace_with_a_secure_private_secret_at_least_32_characters_long
 JWT_EXPIRES_IN=24h
 CORS_ORIGIN=http://localhost:5173
 ```
+*Note: The backend enforces that `JWT_SECRET` must be explicitly configured and at least 32 characters long; it will refuse to start with missing or fallback secrets.*
 
 ### 3. Local Administrator Provisioning
-Provision an administrator account locally without public role selectors or default passwords:
+Provision an initial administrator account locally without exposing public role selectors or default passwords:
 ```bash
-# From backend directory:
-npm run admin:provision <email> <password>
-
-# Example:
+# From repository root:
 npm run admin:provision admin@cardeal.com AdminPassword123!
+
+# Or from backend directory:
+npm --prefix backend run admin:provision admin@cardeal.com AdminPassword123!
 ```
 
-### 4. Running the Backend Server
+### 4. Running the Complete Application
+
+#### Start the Backend API (Port 4000)
 ```bash
 # Development mode (auto-reload via tsx):
-npm run dev
+npm run dev:backend
 
-# Or compile and start production build:
-npm run build
-npm start
+# Or build and run production:
+npm run build:backend
+npm --prefix backend start
 ```
-The API server will listen on `http://localhost:4000`.
 
-## Verified Tests & Test Suite Execution
-
-All 29 integration and domain tests run against isolated temporary SQLite files and clean up automatically.
-
-To execute the test suite:
+#### Start the Frontend SPA (Port 5173)
 ```bash
-# From backend directory:
-npm test
+# In a separate terminal:
+npm run dev:frontend
+```
+Open your browser to `http://localhost:5173`.
 
-# From repository root:
+---
+
+## Running the Test Suites
+
+Both backend and frontend feature automated test suites running on Vitest.
+
+### Run All Tests (Root)
+```bash
+npm test
+```
+
+### Run Backend Tests Separately (37 Tests in 11 Suites)
+```bash
 npm run test:backend
 ```
+Backend coverage includes:
+- `canary.test.ts`: Tooling and TypeScript runtime verification.
+- `auth_registration.test.ts`: User registration persistence in SQLite with scrypt password verification.
+- `auth_validation.test.ts`: Email regex, password length bounds (12–128 chars), 409 duplicate email conflicts, and role escalation prevention.
+- `auth_login.test.ts`: Credential verification, JWT issuance with expiration, and generic 401 INVALID_CREDENTIALS.
+- `auth_middleware_and_admin.test.ts`: Bearer token authentication, 401/403 status enforcement, and admin CLI provisioning.
+- `vehicles_crud.test.ts`: Admin vehicle creation, integer paise price validation, zero-stock catalog listing, PUT detail update with quantity modification rejection, and admin deletion.
+- `vehicles_search.test.ts`: Substring make/model search, exact category filter, inclusive paise bounds, reversed bounds rejection (400), and SQL `LIKE` wildcard escaping.
+- `purchase_and_restock.test.ts`: Atomic 1-unit purchase, 409 OUT_OF_STOCK handling, concurrent competing requests for the final unit (exactly 1 succeeds, 1 gets 409 conflict, final stock 0), and admin additive restock.
+- `database_restart_persistence.test.ts`: Verifies records, hashes, and inventory changes survive process shutdown and database reopening.
+- `regression_fixes.test.ts`: Regression suite verifying explicit secret enforcement, expired tokens, brute-force throttling, safe-integer boundaries, concurrent duplicate registration, and strict mutation payloads.
+- `e2e_integration_flow.test.ts`: End-to-end multi-step integration test validating the complete business flow.
 
-### Test Suite Summary
-- `tests/canary.test.ts`: Infrastructure and TypeScript execution verification.
-- `tests/auth_registration.test.ts`: User registration persistence in SQLite with scrypt password hash verification against correct and incorrect passwords.
-- `tests/auth_validation.test.ts`: Email regex, password length bounds (12-128 chars), 409 duplicate email conflicts, and role escalation prevention.
-- `tests/auth_login.test.ts`: Login credential verification, JWT token issuance with expiration, and generic 401 INVALID_CREDENTIALS.
-- `tests/auth_middleware_and_admin.test.ts`: Bearer token authentication middleware, 401 UNAUTHORIZED/INVALID_TOKEN, 403 FORBIDDEN enforcement, and admin provisioning CLI.
-- `tests/vehicles_crud.test.ts`: Admin vehicle creation with integer paise price validation, zero-stock catalog listing, PUT detail update with quantity modification rejection, and admin deletion.
-- `tests/vehicles_search.test.ts`: Case-insensitive substring make/model search, exact category filter, inclusive paise bounds, reversed bounds rejection (400), and SQL LIKE wildcard escaping (`%` and `_`).
-- `tests/purchase_and_restock.test.ts`: Atomic 1-unit purchase, 409 OUT_OF_STOCK handling, competing concurrent requests for the final unit (exactly 1 succeeds, 1 gets 409 conflict, final stock 0), and admin additive restock.
-- `tests/database_restart_persistence.test.ts`: Full application and database restart verification proving persisted records, hashes, and inventory changes survive process shutdown and database reopening.
+### Run Frontend Tests Separately (11 Tests in 3 Suites)
+```bash
+npm run test:frontend
+```
+Frontend coverage includes:
+- `currency.test.ts`: Precise rupee-to-paise conversion, rejection of malformed currency and fractional paise, and Indian currency formatting (`₹`).
+- `VehicleCard.test.tsx`: Card rendering, price formatting, zero-stock disablement, in-flight spinner state, and admin controls.
+- `App.test.tsx`: Authentication view rendering and form validation.
 
-## Frontend Application
-
-*Status: Pending Stage 2 implementation (Target: 9:25 PM IST).*
+---
 
 ## Screenshots
 
-*Status: Pending Stage 3 browser review on desktop and mobile viewports.*
+Actual screenshots captured from the live application using headless Chrome across desktop, tablet, and mobile viewports:
+
+### Desktop (1440px Viewport)
+![Desktop View](docs/screenshots/desktop_1440.png)
+
+### Tablet (768px Viewport)
+![Tablet View](docs/screenshots/tablet_768.png)
+
+### Mobile (360px Viewport)
+![Mobile View](docs/screenshots/mobile_360.png)
+
+---
+
+## Known Design Trade-offs & Current Limitations
+
+1. **In-Memory Session Storage**: As specified in the architecture agreement, the client stores JWT bearer tokens in memory to eliminate local storage vulnerabilities. Refreshing or reloading the browser clears the session and requires re-authenticating.
+2. **Node.js Runtime Requirement**: The backend utilizes Node.js native `node:sqlite`, which requires Node.js `v22.x` or `v26.x`.
+3. **Currency Precision**: All prices are stored and communicated via the API as non-negative integer paise to eliminate floating-point rounding errors.
+
+---
 
 ## My AI Usage
 
 ### Tools and Actual Use
-- **ChatGPT**: Assisted with interpreting the assignment and JD, structuring the initial guides, and planning test cases.
-- **Antigravity with Gemini 3.8 Flash**: Executed repository inspection, verified `node:sqlite` compatibility on Node 26, drove genuine Red-Green-Refactor TDD slices, implemented database schema/migrations, services, controllers, routes, CLI provisioning, and restart persistence tests.
+- **ChatGPT**: Used for initial interpretation of the kata requirements, drafting architectural guidelines, and outlining the TDD strategy.
+- **Antigravity with Gemini 3.8 Flash**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, drove Red-Green-Refactor test cycles for both backend and frontend, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
 
 ### Reflection
-*Pending the candidate's personal reflection after complete workflow conclusion.*
+*The candidate's personal reflection will be added in their own voice prior to final submission.*
 
 ### Conversation Transparency
-[PROMPTS.md](PROMPTS.md) is currently incomplete and will be populated with verified raw unedited transcripts/links prior to final submission.
+Full unedited chat logs and transcripts are preserved in [PROMPTS.md](PROMPTS.md).
