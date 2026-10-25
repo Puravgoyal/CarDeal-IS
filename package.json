@@ -1,0 +1,12 @@
+{
+  "name": "cardeal-is",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Car Dealership Inventory System",
+  "scripts": {
+    "test:backend": "npm --prefix backend test",
+    "dev:backend": "npm --prefix backend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "admin:provision": "npm --prefix backend run admin:provision"
+  }
+}
