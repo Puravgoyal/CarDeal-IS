@@ -42,7 +42,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && endpoint !== "/api/auth/login") {
     if (onUnauthorizedCallback) {
       onUnauthorizedCallback();
     }

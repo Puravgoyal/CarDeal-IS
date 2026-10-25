@@ -63,6 +63,14 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchVehicles();
+    } else {
+      setIsAdminView(false);
+      setAdminModalOpen(false);
+      setSelectedVehicle(null);
+      setVehicles([]);
+      setActiveFilters({});
+      setPurchasingId(null);
+      setToasts([]);
     }
   }, [isAuthenticated]);
 
@@ -106,9 +114,11 @@ export const AppContent: React.FC = () => {
       } else {
         addToast(
           "error",
-          "Purchase Failed",
-          err.message || "An error occurred while processing your purchase. Please refresh."
+          "Purchase Status Uncertain",
+          err.message || "A network or server error occurred. Refreshing inventory to verify actual purchase status."
         );
+        // Refresh catalog to sync latest state from server truth without assuming outcome
+        fetchVehicles();
       }
     } finally {
       setPurchasingId(null);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Vehicle } from "../types/vehicle.js";
 import { validateRupeeInput, rupeesToPaise, formatPaiseToINR } from "../utils/currency.js";
 
@@ -34,8 +34,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (isOpen) {
+      previouslyFocusedElement.current = document.activeElement as HTMLElement | null;
       setError(null);
       setIsSubmitting(false);
 
@@ -53,16 +57,61 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         setPriceRupees("");
         setQuantity("1");
       }
+
+      // Auto-focus the first interactive element or input inside modal
+      const timer = setTimeout(() => {
+        if (modalContainerRef.current) {
+          const focusable = modalContainerRef.current.querySelectorAll<HTMLElement>(
+            'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length > 0) {
+            focusable[0].focus();
+          }
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      // Restore focus to launching element on close
+      if (previouslyFocusedElement.current && typeof previouslyFocusedElement.current.focus === "function") {
+        previouslyFocusedElement.current.focus();
+      }
     }
   }, [isOpen, mode, vehicle]);
 
-  // Handle ESC key
+  // Handle ESC key and Focus Trapping
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && modalContainerRef.current) {
+        const focusable = modalContainerRef.current.querySelectorAll<HTMLElement>(
+          'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const firstElement = focusable[0];
+        const lastElement = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
@@ -83,9 +132,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         const priceErr = validateRupeeInput(priceRupees);
         if (priceErr) throw new Error(priceErr);
 
-        const qtyNum = parseInt(quantity, 10);
-        if (isNaN(qtyNum) || qtyNum < 0 || !Number.isSafeInteger(qtyNum)) {
-          throw new Error("Quantity must be a non-negative integer.");
+        const trimmedQty = quantity.trim();
+        if (!/^\d+$/.test(trimmedQty)) {
+          throw new Error("Quantity must be a non-negative whole integer.");
+        }
+        const qtyNum = Number(trimmedQty);
+        if (!Number.isSafeInteger(qtyNum) || qtyNum < 0) {
+          throw new Error("Quantity must be a non-negative safe integer.");
         }
 
         const pricePaise = rupeesToPaise(priceRupees);
@@ -113,9 +166,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         });
         onClose();
       } else if (mode === "restock" && vehicle) {
-        const incrementNum = parseInt(restockIncrement, 10);
-        if (isNaN(incrementNum) || incrementNum <= 0 || !Number.isSafeInteger(incrementNum)) {
-          throw new Error("Restock increment must be a positive integer.");
+        const trimmedInc = restockIncrement.trim();
+        if (!/^[1-9]\d*$/.test(trimmedInc)) {
+          throw new Error("Restock increment must be a positive whole integer.");
+        }
+        const incrementNum = Number(trimmedInc);
+        if (!Number.isSafeInteger(incrementNum) || incrementNum <= 0) {
+          throw new Error("Restock increment must be a positive safe integer.");
         }
         await onSaveRestock(vehicle.id, incrementNum);
         onClose();
@@ -132,6 +189,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   return (
     <div
+      ref={modalContainerRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/40 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
@@ -161,7 +219,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {/* Add & Edit Form Fields */}
           {(mode === "add" || mode === "edit") && (
             <>
