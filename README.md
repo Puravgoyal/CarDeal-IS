@@ -82,14 +82,14 @@ Open your browser to `http://localhost:5173`.
 
 ## Running the Test Suites
 
-Both backend and frontend feature automated test suites running on Vitest.
+Both backend and frontend feature automated test suites running on Vitest. Comprehensive verification results and full terminal execution logs are documented in [TEST_REPORT.md](TEST_REPORT.md).
 
-### Run All Tests (Root)
+### Run All Tests (Root - 55 Tests across 17 Suites)
 ```bash
 npm test
 ```
 
-### Run Backend Tests Separately (37 Tests in 11 Suites)
+### Run Backend Tests Separately (39 Tests in 12 Suites)
 ```bash
 npm run test:backend
 ```
@@ -104,30 +104,36 @@ Backend coverage includes:
 - `purchase_and_restock.test.ts`: Atomic 1-unit purchase, 409 OUT_OF_STOCK handling, concurrent competing requests for the final unit (exactly 1 succeeds, 1 gets 409 conflict, final stock 0), and admin additive restock.
 - `database_restart_persistence.test.ts`: Verifies records, hashes, and inventory changes survive process shutdown and database reopening.
 - `regression_fixes.test.ts`: Regression suite verifying explicit secret enforcement, expired tokens, brute-force throttling, safe-integer boundaries, concurrent duplicate registration, and strict mutation payloads.
+- `phase3_regressions.test.ts`: Focused regression suite verifying atomic SQL restock upper-bound overflow prevention and subprocess CLI execution with custom database path.
 - `e2e_integration_flow.test.ts`: End-to-end multi-step integration test validating the complete business flow.
 
-### Run Frontend Tests Separately (11 Tests in 3 Suites)
+### Run Frontend Tests Separately (16 Tests in 5 Suites)
 ```bash
 npm run test:frontend
 ```
 Frontend coverage includes:
 - `currency.test.ts`: Precise rupee-to-paise conversion, rejection of malformed currency and fractional paise, and Indian currency formatting (`₹`).
 - `VehicleCard.test.tsx`: Card rendering, price formatting, zero-stock disablement, in-flight spinner state, and admin controls.
-- `App.test.tsx`: Authentication view rendering and form validation.
+- `AdminModal.test.tsx`: Strict non-negative integer quantity validation, rejection of fractional/malformed inputs, ESC key close, and keyboard focus trap.
+- `AuthView.test.tsx`: Authentication view error handling verifying invalid credentials do not misattribute as session expiration.
+- `App.test.tsx`: Application view rendering and form validation bounds.
 
 ---
 
 ## Screenshots
 
-Actual screenshots captured from the live application using headless Chrome across desktop, tablet, and mobile viewports:
+Actual screenshots captured from the live application using headless Chrome across desktop, tablet, and mobile viewports with authenticated session state:
 
-### Desktop (1440px Viewport)
-![Desktop View](docs/screenshots/desktop_1440.png)
+### Desktop Customer Catalog View (1440px Viewport)
+![Desktop Catalog View](docs/screenshots/desktop_1440.png)
 
-### Tablet (768px Viewport)
+### Desktop Admin Management View (1440px Viewport)
+![Desktop Admin View](docs/screenshots/admin_1440.png)
+
+### Tablet Customer Catalog View (768px Viewport)
 ![Tablet View](docs/screenshots/tablet_768.png)
 
-### Mobile (360px Viewport)
+### Mobile Customer Catalog View (360px Viewport)
 ![Mobile View](docs/screenshots/mobile_360.png)
 
 ---
@@ -144,7 +150,8 @@ Actual screenshots captured from the live application using headless Chrome acro
 
 ### Tools and Actual Use
 - **ChatGPT**: Used for initial interpretation of the kata requirements, drafting architectural guidelines, and outlining the TDD strategy.
-- **Antigravity with Gemini 3.8 Flash**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, drove Red-Green-Refactor test cycles for both backend and frontend, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
+- **Antigravity with Gemini 3.8 Flash (High)**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, drove Red-Green-Refactor test cycles for both backend and frontend, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
+- **Attribution Correction**: Historical commit trailers were updated via an explicit Git history replacement bundle to use standard `@ai.invalid` co-author identities (`chatgpt@ai.invalid` and `gemini@ai.invalid`), preserving all 24 original commit trees, authors, and timestamps.
 
 ### Reflection
 *The candidate's personal reflection will be added in their own voice prior to final submission.*

@@ -12,6 +12,7 @@ All Antigravity paired programming interactions with Gemini 3.8 Flash (High) are
   - Stage 0: Environmental inspection, document cross-referencing, specification analysis, and roadmap consolidation.
   - Stage 1: TDD setup, Red-Green-Refactor cycles for authentication, vehicle domain, atomic purchase/restock, and file-backed SQLite persistence.
   - Consolidated Stage 2: Independent review defect corrections (fallback secret elimination, safe integer enforcement, concurrent duplicate handling, rate limiting) and complete React + Tailwind SPA implementation with multi-viewport verification.
+  - Phase 3: Attribution history replacement via Git bundle, atomic SQL restock upper-bound overflow prevention, admin CLI isolated subprocess verification, modal accessibility/focus trapping, frontend state cleanup on logout, and live authenticated multi-viewport screenshot capture.
 
 ## 2. ChatGPT Planning & Review Sessions
 
