@@ -20,7 +20,7 @@ export function createApp(options: AppOptions): Express {
   app.use(express.json());
 
   // Services & Controllers
-  const authService = new AuthService(options.dbManager);
+  const authService = new AuthService(options.dbManager, options.jwtSecret);
   const authController = new AuthController(authService);
 
   // Mount Auth Routes
