@@ -18,12 +18,27 @@ export interface SanitizedUser {
 
 export class AuthService {
   private dbManager: DatabaseManager;
+  private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   constructor(dbManager: DatabaseManager) {
     this.dbManager = dbManager;
   }
 
-  public async register(email: string, password: string): Promise<SanitizedUser> {
+  public async register(email: unknown, password: unknown): Promise<SanitizedUser> {
+    if (typeof email !== "string" || !AuthService.EMAIL_REGEX.test(email.trim())) {
+      const err = new Error("A valid email address is required.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    if (typeof password !== "string" || password.length < 12 || password.length > 128) {
+      const err = new Error("Password must be between 12 and 128 characters.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
     const db = this.dbManager.getDatabase();
 
