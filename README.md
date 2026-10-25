@@ -1,8 +1,8 @@
 # CarDeal IS
 
-A modern, full-stack Car Dealership Inventory System for Incubyte Round 1. Built with a Test-Driven Development (TDD) workflow, strict software craftsmanship practices, and transparent AI pairing.
+A modern, full-stack Car Dealership Inventory System for Incubyte Round 1. Developed with AI assistance, backend Red-Green test cycles, independent code review, and documented verification.
 
-## Planned vs. Implemented Functionality
+## Implemented Functionality
 
 - **User Authentication**: Token-based authentication using signed JWTs. Passwords hashed using non-truncating `scrypt` with salt and constant-time equality checks.
 - **Role-Based Access**: Public registration defaults strictly to standard buyer privileges. Admin capabilities are managed server-side and provisioned via a dedicated local CLI tool.
@@ -13,28 +13,28 @@ A modern, full-stack Car Dealership Inventory System for Incubyte Round 1. Built
 
 ## Architecture & Technology Stack
 
-- **Backend API**: Node.js (`v26.7.0`), Express (`4.21.2`), TypeScript (`5.7.2`)
+- **Backend API**: Node.js (`v26.7.0`), Express (`4.22.3`), TypeScript (`5.9.3`)
 - **Database**: File-backed SQLite utilizing Node.js native built-in `node:sqlite` (`DatabaseSync` with WAL journal mode)
-- **Security & Tokens**: Node built-in `crypto.scrypt`, `jsonwebtoken` (`9.0.2`) with brute-force rate limiting (`429 TOO_MANY_REQUESTS`)
-- **Testing**: `vitest` (`2.1.8`), `supertest` (`7.0.0`), `@testing-library/react` (`16.1.0`), `@testing-library/jest-dom` (`6.6.3`)
-- **Frontend SPA**: React (`18.3.1`), Vite (`5.4.11`), Tailwind CSS (`3.4.17`)
+- **Security & Tokens**: Node built-in `crypto.scrypt`, `jsonwebtoken` (`9.0.3`) with brute-force rate limiting (`429 TOO_MANY_REQUESTS`)
+- **Testing**: `vitest` (`2.1.9`), `supertest` (`7.3.1`), `@testing-library/react` (`16.3.3`), `@testing-library/jest-dom` (`6.9.1`)
+- **Frontend SPA**: React (`18.3.1`), Vite (`5.4.21`), Tailwind CSS (`3.4.19`)
 
 ---
 
 ## Local Setup & Execution Guide
 
 ### Prerequisites
-- **Node.js**: `v22.x` or `v26.x` (verified with `v26.7.0`, requiring built-in `node:sqlite`)
-- **npm**: `11.x`+
+- **Node.js**: verified with `v26.7.0`. Use this tested runtime for reproduction; other versions have not been verified for this project.
+- **npm**: verified with `11.19.0`.
 
 ### 1. Installation
 Install dependencies for both backend and frontend from the repository root:
 ```bash
 # Install backend packages
-npm --prefix backend install
+npm --prefix backend ci
 
 # Install frontend packages
-npm --prefix frontend install
+npm --prefix frontend ci
 ```
 
 ### 2. Environment Configuration
@@ -47,7 +47,7 @@ JWT_SECRET=replace_with_a_secure_private_secret_at_least_32_characters_long
 JWT_EXPIRES_IN=24h
 CORS_ORIGIN=http://localhost:5173
 ```
-*Note: The backend enforces that `JWT_SECRET` must be explicitly configured and at least 32 characters long; it will refuse to start with missing or fallback secrets.*
+Generate a private value before starting the server, for example with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, and replace the placeholder. The backend requires an explicitly configured secret of at least 32 characters; a long placeholder can pass this length check and must not be used as a real secret.
 
 ### 3. Local Administrator Provisioning
 Provision an initial administrator account locally without exposing public role selectors or default passwords:
@@ -56,8 +56,10 @@ Provision an initial administrator account locally without exposing public role 
 npm run admin:provision admin@cardeal.com AdminPassword123!
 
 # Or from backend directory:
-npm --prefix backend run admin:provision admin@cardeal.com AdminPassword123!
+npm run admin:provision admin@cardeal.com AdminPassword123!
 ```
+
+Replace the example administrator email and password with your own local values. Do not reuse the published example password for a deployed instance.
 
 ### 4. Running the Complete Application
 
@@ -82,7 +84,7 @@ Open your browser to `http://localhost:5173`.
 
 ## Running the Test Suites
 
-Both backend and frontend feature automated test suites running on Vitest. Comprehensive verification results and full terminal execution logs are documented in [TEST_REPORT.md](TEST_REPORT.md).
+Both backend and frontend feature automated test suites running on Vitest. Verification results, scope limitations and recorded terminal execution logs are documented in [TEST_REPORT.md](TEST_REPORT.md).
 
 ### Run All Tests (Root - 55 Tests across 17 Suites)
 ```bash
@@ -102,10 +104,10 @@ Backend coverage includes:
 - `vehicles_crud.test.ts`: Admin vehicle creation, integer paise price validation, zero-stock catalog listing, PUT detail update with quantity modification rejection, and admin deletion.
 - `vehicles_search.test.ts`: Substring make/model search, exact category filter, inclusive paise bounds, reversed bounds rejection (400), and SQL `LIKE` wildcard escaping.
 - `purchase_and_restock.test.ts`: Atomic 1-unit purchase, 409 OUT_OF_STOCK handling, concurrent competing requests for the final unit (exactly 1 succeeds, 1 gets 409 conflict, final stock 0), and admin additive restock.
-- `database_restart_persistence.test.ts`: Verifies records, hashes, and inventory changes survive process shutdown and database reopening.
+- `database_restart_persistence.test.ts`: Closes and reopens the same database file within one test process, verifies stored users/vehicles, and makes a purchase after reopening. It does not restart the operating-system process or reopen again after that purchase.
 - `regression_fixes.test.ts`: Regression suite verifying explicit secret enforcement, expired tokens, brute-force throttling, safe-integer boundaries, concurrent duplicate registration, and strict mutation payloads.
 - `phase3_regressions.test.ts`: Focused regression suite verifying atomic SQL restock upper-bound overflow prevention and subprocess CLI execution with custom database path.
-- `e2e_integration_flow.test.ts`: End-to-end multi-step integration test validating the complete business flow.
+- `e2e_integration_flow.test.ts`: Multi-step HTTP API integration test. It does not drive the React application in a browser.
 
 ### Run Frontend Tests Separately (16 Tests in 5 Suites)
 ```bash
@@ -140,8 +142,8 @@ Actual screenshots captured from the live application using headless Chrome acro
 
 ## Known Design Trade-offs & Current Limitations
 
-1. **In-Memory Session Storage**: As specified in the architecture agreement, the client stores JWT bearer tokens in memory to eliminate local storage vulnerabilities. Refreshing or reloading the browser clears the session and requires re-authenticating.
-2. **Node.js Runtime Requirement**: The backend utilizes Node.js native `node:sqlite`, which requires Node.js `v22.x` or `v26.x`.
+1. **In-Memory Session Storage**: As specified in the architecture agreement, the client stores JWT bearer tokens in memory rather than persisting them in browser storage. This does not provide immunity from XSS. Refreshing or reloading the browser clears the session and requires re-authenticating.
+2. **Node.js Runtime Requirement**: The backend uses native `node:sqlite`; this project has been verified on Node.js `v26.7.0`.
 3. **Currency Precision**: All prices are stored and communicated via the API as non-negative integer paise to eliminate floating-point rounding errors.
 
 ---
@@ -149,9 +151,15 @@ Actual screenshots captured from the live application using headless Chrome acro
 ## My AI Usage
 
 ### Tools and Actual Use
-- **ChatGPT**: Used for initial interpretation of the kata requirements, drafting architectural guidelines, and outlining the TDD strategy.
-- **Antigravity with Gemini 3.8 Flash (High)**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, drove Red-Green-Refactor test cycles for both backend and frontend, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
-- **Attribution Correction**: Historical commit trailers were updated via an explicit Git history replacement bundle to use standard `@ai.invalid` co-author identities (`chatgpt@ai.invalid` and `gemini@ai.invalid`), preserving all 24 original commit trees, authors, and timestamps.
+- **ChatGPT**: Used for initial interpretation of the kata requirements, drafting architectural guidelines and development prompts, independently inspecting code and test claims, reproducing defects, and preparing attribution and documentation corrections.
+- **Antigravity with Gemini 3.8 Flash (High)**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, implemented backend Red-Green cycles and frontend tests, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
+- **Attribution Correction**: Historical commit trailers were updated via an explicit Git history replacement bundle to use project-specific placeholder `@ai.invalid` co-author identities (`chatgpt@ai.invalid` and `gemini@ai.invalid`), preserving all 24 original commit trees, authors, and timestamps.
+
+### Development history and verification limits
+
+The backend history includes explicit Red/Green commits. The initial frontend implementation and its tests were committed together, so the history does not demonstrate tests-first development for every frontend behavior. Later fixes preserve their actual history without reconstructing earlier commits.
+
+All 55 automated tests pass on the tested runtime; this is a test pass rate, not a measured code-coverage percentage. The automated workflow test covers the HTTP API. Browser screenshots demonstrate rendered states, but a complete browser-driven purchase/admin workflow and fresh-checkout execution have not been independently verified in this review. Database initialization creates the initial schema; it is not a versioned migration system.
 
 ### Personal Reflection
 
@@ -164,4 +172,4 @@ AI helped move the project forward quickly, but it also produced confident claim
 For future projects, I would keep the small tests-first workflow, review AI-generated changes earlier, and preserve conversation records throughout development. I take responsibility for understanding the submitted application and explaining both the implementation decisions and the assistance I received.
 
 ### Conversation Transparency
-Full unedited chat logs and transcripts are preserved in [PROMPTS.md](PROMPTS.md).
+The approved public planning/review snapshot and the exported Antigravity session records are available in [PROMPTS.md](PROMPTS.md), with their scope and snapshot timing stated.

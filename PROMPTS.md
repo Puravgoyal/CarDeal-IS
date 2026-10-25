@@ -1,6 +1,6 @@
 # AI Conversation Records and Transcripts
 
-This document contains the unedited, chronological conversation records of all AI pairing sessions used during the development of CarDeal-IS for Incubyte Round 1.
+This document links the public planning/review conversation and contains the exported Antigravity session records for CarDeal-IS. The scope and snapshot timing of each record are identified below.
 
 ---
 
@@ -18,10 +18,9 @@ This document contains the unedited, chronological conversation records of all A
 
 ## 1. ChatGPT Planning & Review Sessions
 
-> **Editorial Notice - Awaiting Candidate Public Link / Export:**  
-> The candidate used ChatGPT for initial problem interpretation, drafting architectural boundaries, and independent code review. In accordance with Round 1 requirements for unedited conversation evidence, the candidate must supply their public chat export URL (e.g., `https://chatgpt.com/share/...`) or attach the raw chat export file.  
-> 
-> **Candidate Public Link**: *[Candidate to insert verified public chat export URL here, e.g., https://chatgpt.com/share/...]*
+**Public planning and independent review conversation:** [Read the shared ChatGPT/Codex conversation](https://chatgpt.com/s/cx_6ade28f0fb0c819196df79206fa4100d).
+
+**[Editorial Metadata] Snapshot scope:** This public snapshot was created on 25 October 2026 with the candidate's permission. It records the conversation up to sharing; later messages and repository updates are not automatically added. The Antigravity records below are a separate exported session. Original message bodies, including earlier mistakes and their corrections, are retained.
 
 ---
 

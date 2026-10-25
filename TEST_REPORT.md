@@ -6,9 +6,9 @@
 **Execution Environment**:
 - **Operating System**: Microsoft Windows 11 (win32 x64)
 - **Node.js Runtime**: `v26.7.0` (using native built-in `node:sqlite` engine)
-- **npm Version**: `11.1.0`
-- **Test Framework**: Vitest `v2.1.9` with `@testing-library/react` `16.1.0` and `supertest` `7.0.0`
-- **TypeScript**: `v5.7.2`
+- **npm Version**: `11.19.0`
+- **Test Framework**: Vitest `v2.1.9` with `@testing-library/react` `16.3.3` and `supertest` `7.3.1`
+- **TypeScript**: `v5.9.3`
 
 ---
 
@@ -20,7 +20,7 @@
 | **Frontend SPA** | 5 | 16 | 16 | 0 | **PASS (100%)** |
 | **Total Combined** | **17** | **55** | **55** | **0** | **PASS (100%)** |
 
-Both backend TypeScript compilation and frontend production builds pass cleanly with zero warnings or errors.
+Both backend TypeScript compilation and frontend production builds completed successfully. PASS (100%) denotes the proportion of executed tests passing, not code coverage.
 
 ---
 
@@ -45,9 +45,9 @@ Both backend TypeScript compilation and frontend production builds pass cleanly 
 8. **`tests/purchase_and_restock.test.ts`** (3 tests)
    - TDD Slice 7: Atomic 1-unit purchase, `409 OUT_OF_STOCK` handling, concurrent competing requests for the last remaining unit (atomic SQLite decrement: 1 succeeds, 1 gets 409, final stock 0), and admin additive restock.
 9. **`tests/database_restart_persistence.test.ts`** (1 test)
-   - TDD Verification: Proves file-backed SQLite persists data across complete database manager closure and app restarts.
+   - TDD Verification: Closes and reopens the same SQLite file and reconstructs the Express app within one process. This does not restart the OS process or verify persistence of the final purchase through another reopen.
 10. **`tests/e2e_integration_flow.test.ts`** (1 test)
-    - End-to-end multi-step integration test validating the entire business workflow in sequence.
+    - Multi-step HTTP API integration test. It does not exercise the React UI through a browser.
 11. **`tests/regression_fixes.test.ts`** (7 tests)
     - Independent review regression suite: explicit JWT secret enforcement, safe integer boundaries, brute-force login throttling (`429 TOO_MANY_REQUESTS`), expired token rejection, concurrent duplicate registration, and strict payload filtering.
 12. **`tests/phase3_regressions.test.ts`** (2 tests)
@@ -168,3 +168,9 @@ Command: `npm test` (invoking `npm run test:backend && npm run test:frontend`)
    Start at  21:17:34
    Duration  3.48s (transform 408ms, setup 1.52s, collect 1.76s, tests 697ms, environment 9.08s, prepare 1.44s)
 ```
+
+## Independent review confirmation and scope
+
+On 25 October 2026 at approximately 21:34 IST, an independent review reran `npm test` and `npm run build` against an isolated copy of the application at `857944f3c7bf800ed3dcafdbedced4c30ffda7d1`. All 39 backend tests and 16 frontend tests passed, and both builds completed successfully. Runtime: Node.js 26.7.0, npm 11.19.0. Dependency versions above were corrected against the lockfiles during this review.
+
+The review used copied installed dependencies; it does not establish a fresh-checkout installation. Desktop and mobile screenshots were visually inspected. A complete browser-driven business-flow test, cross-process database contention test and measured coverage report are not included. The stored execution log above remains the original earlier run, not a reconstruction of the independent run.
