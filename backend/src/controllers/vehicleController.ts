@@ -54,4 +54,24 @@ export class VehicleController {
       next(error);
     }
   };
+
+  public purchase = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const vehicle = await this.vehicleService.purchase(id);
+      res.status(200).json({ vehicle });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public restock = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const vehicle = await this.vehicleService.restock(id, req.body.quantity);
+      res.status(200).json({ vehicle });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

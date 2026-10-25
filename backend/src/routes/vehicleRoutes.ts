@@ -19,6 +19,10 @@ export function createVehicleRoutes(
   router.get("/search", vehicleController.search);
   router.get("/", vehicleController.list);
 
+  // Actions
+  router.post("/:id/purchase", vehicleController.purchase);
+  router.post("/:id/restock", middleware.requireAdmin, vehicleController.restock);
+
   // Admin mutations
   router.post("/", middleware.requireAdmin, vehicleController.create);
   router.put("/:id", middleware.requireAdmin, vehicleController.update);

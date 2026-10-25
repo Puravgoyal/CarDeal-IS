@@ -206,4 +206,44 @@ export class VehicleService {
     const stmt = db.prepare(sql);
     return stmt.all(...params) as Vehicle[];
   }
+
+  public async purchase(id: string): Promise<Vehicle> {
+    await this.getById(id);
+
+    const now = new Date().toISOString();
+    const db = this.dbManager.getDatabase();
+    const stmt = db.prepare(
+      "UPDATE vehicles SET quantity = quantity - 1, updated_at = ? WHERE id = ? AND quantity > 0"
+    );
+    const result = stmt.run(now, id);
+
+    if (Number(result.changes) === 0) {
+      const err = new Error("This vehicle is out of stock.");
+      (err as any).statusCode = 409;
+      (err as any).code = "OUT_OF_STOCK";
+      throw err;
+    }
+
+    return this.getById(id);
+  }
+
+  public async restock(id: string, increment: unknown): Promise<Vehicle> {
+    await this.getById(id);
+
+    if (typeof increment !== "number" || !Number.isInteger(increment) || increment <= 0 || increment > 1_000_000) {
+      const err = new Error("Restock increment must be a positive integer.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    const now = new Date().toISOString();
+    const db = this.dbManager.getDatabase();
+    const stmt = db.prepare(
+      "UPDATE vehicles SET quantity = quantity + ?, updated_at = ? WHERE id = ?"
+    );
+    stmt.run(increment, now, id);
+
+    return this.getById(id);
+  }
 }
