@@ -7,6 +7,11 @@
     "test:backend": "npm --prefix backend test",
     "dev:backend": "npm --prefix backend run dev",
     "build:backend": "npm --prefix backend run build",
-    "admin:provision": "npm --prefix backend run admin:provision"
+    "admin:provision": "npm --prefix backend run admin:provision",
+    "test:frontend": "npm --prefix frontend test",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "build": "npm run build:backend && npm run build:frontend"
   }
 }
