@@ -153,8 +153,15 @@ Actual screenshots captured from the live application using headless Chrome acro
 - **Antigravity with Gemini 3.8 Flash (High)**: Served as the interactive coding partner. Executed directory and tooling inspections, verified `node:sqlite` compatibility, drove Red-Green-Refactor test cycles for both backend and frontend, implemented services, controllers, routes, CLI tools, React components, and captured multi-viewport screenshots.
 - **Attribution Correction**: Historical commit trailers were updated via an explicit Git history replacement bundle to use standard `@ai.invalid` co-author identities (`chatgpt@ai.invalid` and `gemini@ai.invalid`), preserving all 24 original commit trees, authors, and timestamps.
 
-### Reflection
-*The candidate's personal reflection will be added in their own voice prior to final submission.*
+### Personal Reflection
+
+I used Antigravity with Gemini to help implement the application and ChatGPT to interpret the requirements, prepare development prompts, and independently review the generated code.
+
+The most useful lesson was that passing tests do not automatically mean an implementation is complete. Independent review found gaps in JWT configuration, numeric validation, concurrent registration, and administrator provisioning that the original tests had missed. These findings helped me understand why tests need to challenge failure cases and boundaries, rather than only confirm expected behavior.
+
+AI helped move the project forward quickly, but it also produced confident claims that needed checking against the code and actual results. I used that feedback to request focused fixes and additional regression tests. I also learned to distinguish API integration tests from browser verification and to describe limitations honestly.
+
+For future projects, I would keep the small tests-first workflow, review AI-generated changes earlier, and preserve conversation records throughout development. I take responsibility for understanding the submitted application and explaining both the implementation decisions and the assistance I received.
 
 ### Conversation Transparency
 Full unedited chat logs and transcripts are preserved in [PROMPTS.md](PROMPTS.md).
