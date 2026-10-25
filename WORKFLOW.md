@@ -23,9 +23,9 @@ docs: establish project requirements and development guides
 ChatGPT assisted with interpreting the assignment and drafting these guides.
 
 
-Co-authored-by: ChatGPT <AI@users.noreply.github.com>
+Co-authored-by: ChatGPT <chatgpt@ai.invalid>
 
-When Gemini also contributes to the commit, describe its actual contribution and add Co-authored-by: Gemini <AI@users.noreply.github.com> on the next trailer line. Use a commit-message file to preserve line breaks; inspect the resulting commit. Do not claim manual candidate work that did not happen. Record the actual model label shown in Antigravity, not an assumed informal name.
+When Gemini also contributes to the commit, describe its actual contribution and add Co-authored-by: Gemini <gemini@ai.invalid> on the next trailer line. Use a commit-message file to preserve line breaks; inspect the resulting commit. Do not claim manual candidate work that did not happen. Record the actual model label shown in Antigravity, not an assumed informal name.
 
 ## Raw conversations
 
