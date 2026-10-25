@@ -28,6 +28,14 @@ export interface UpdateVehicleInput {
   quantity?: unknown;
 }
 
+export interface SearchVehicleQuery {
+  make?: unknown;
+  model?: unknown;
+  category?: unknown;
+  minPrice?: unknown;
+  maxPrice?: unknown;
+}
+
 export class VehicleService {
   private dbManager: DatabaseManager;
 
@@ -53,6 +61,10 @@ export class VehicleService {
       throw err;
     }
     return val;
+  }
+
+  private escapeLike(str: string): string {
+    return str.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
   }
 
   public async create(input: CreateVehicleInput): Promise<Vehicle> {
@@ -115,7 +127,6 @@ export class VehicleService {
     const category = this.validateTextField(input.category, "category");
     const price = this.validateNonNegativeInteger(input.price, "price");
 
-    // Check existence
     await this.getById(id);
 
     const now = new Date().toISOString();
@@ -133,5 +144,66 @@ export class VehicleService {
     const db = this.dbManager.getDatabase();
     const stmt = db.prepare("DELETE FROM vehicles WHERE id = ?");
     stmt.run(id);
+  }
+
+  public async search(query: SearchVehicleQuery): Promise<Vehicle[]> {
+    let sql = "SELECT * FROM vehicles WHERE 1=1";
+    const params: unknown[] = [];
+
+    if (typeof query.make === "string" && query.make.trim().length > 0) {
+      sql += " AND make LIKE ? ESCAPE '\\'";
+      params.push(`%${this.escapeLike(query.make.trim())}%`);
+    }
+
+    if (typeof query.model === "string" && query.model.trim().length > 0) {
+      sql += " AND model LIKE ? ESCAPE '\\'";
+      params.push(`%${this.escapeLike(query.model.trim())}%`);
+    }
+
+    if (typeof query.category === "string" && query.category.trim().length > 0) {
+      sql += " AND LOWER(category) = LOWER(?)";
+      params.push(query.category.trim());
+    }
+
+    let minPriceNum: number | undefined;
+    if (query.minPrice !== undefined && query.minPrice !== "") {
+      const num = Number(query.minPrice);
+      if (!Number.isInteger(num) || num < 0) {
+        const err = new Error("minPrice must be a non-negative integer paise value.");
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+      minPriceNum = num;
+      sql += " AND price >= ?";
+      params.push(minPriceNum);
+    }
+
+    let maxPriceNum: number | undefined;
+    if (query.maxPrice !== undefined && query.maxPrice !== "") {
+      const num = Number(query.maxPrice);
+      if (!Number.isInteger(num) || num < 0) {
+        const err = new Error("maxPrice must be a non-negative integer paise value.");
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+      maxPriceNum = num;
+      sql += " AND price <= ?";
+      params.push(maxPriceNum);
+    }
+
+    if (minPriceNum !== undefined && maxPriceNum !== undefined && minPriceNum > maxPriceNum) {
+      const err = new Error("minPrice cannot be greater than maxPrice.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    sql += " ORDER BY created_at DESC, id ASC";
+
+    const db = this.dbManager.getDatabase();
+    const stmt = db.prepare(sql);
+    return stmt.all(...params) as Vehicle[];
   }
 }

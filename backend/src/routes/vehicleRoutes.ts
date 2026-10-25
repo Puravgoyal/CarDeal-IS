@@ -15,7 +15,8 @@ export function createVehicleRoutes(
   // All vehicle routes require authentication
   router.use(middleware.authenticateToken);
 
-  // Listing
+  // Search & List
+  router.get("/search", vehicleController.search);
   router.get("/", vehicleController.list);
 
   // Admin mutations

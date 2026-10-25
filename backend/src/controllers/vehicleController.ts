@@ -26,6 +26,15 @@ export class VehicleController {
     }
   };
 
+  public search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const vehicles = await this.vehicleService.search(req.query);
+      res.status(200).json({ vehicles });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
