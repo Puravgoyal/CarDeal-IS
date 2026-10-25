@@ -3,7 +3,7 @@ import request from "supertest";
 import path from "node:path";
 import fs from "node:fs";
 import jwt from "jsonwebtoken";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { createApp } from "../src/app.js";
 import { DatabaseManager } from "../src/database/connection.js";
 import { resetLoginRateLimiter } from "../src/middleware/rateLimiter.js";
@@ -207,23 +207,38 @@ describe("Backend Regression Fixes", () => {
     expect(badSearchParamRes.body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("7. verifies admin provisioning CLI honors custom DATABASE_PATH", async () => {
+  it("7. verifies admin provisioning CLI honors custom DATABASE_PATH via subprocess", () => {
     const customDbPath = path.resolve("./data/test_custom_admin_cli.db");
     if (fs.existsSync(customDbPath)) {
       fs.unlinkSync(customDbPath);
     }
 
     try {
+      const backendDir = process.cwd().endsWith("backend") ? process.cwd() : path.resolve(process.cwd(), "backend");
+      const tsxCli = path.join(backendDir, "node_modules", "tsx", "dist", "cli.mjs");
+      const script = path.join(backendDir, "src", "cli", "provisionAdmin.ts");
+
+      const result = spawnSync(
+        process.execPath,
+        [tsxCli, script, "customadmin@test.com", "AdminPass12345!"],
+        {
+          cwd: backendDir,
+          env: {
+            ...process.env,
+            DATABASE_PATH: customDbPath
+          },
+          encoding: "utf-8"
+        }
+      );
+
+      expect(result.status).toBe(0);
+      expect(fs.existsSync(customDbPath)).toBe(true);
+
       const customDbManager = new DatabaseManager(customDbPath);
-      const admin = await provisionAdminUser(customDbManager, "customadmin@test.com", "AdminPass12345!");
+      const db = customDbManager.getDatabase();
+      const admin = db.prepare("SELECT email, role FROM users WHERE email = ?").get("customadmin@test.com") as any;
       expect(admin).toBeDefined();
       expect(admin.role).toBe("admin");
-
-      expect(fs.existsSync(customDbPath)).toBe(true);
-      const db = customDbManager.getDatabase();
-      const row = db.prepare("SELECT email, role FROM users WHERE email = ?").get("customadmin@test.com") as any;
-      expect(row).toBeDefined();
-      expect(row.role).toBe("admin");
       customDbManager.close();
     } finally {
       if (fs.existsSync(customDbPath)) {

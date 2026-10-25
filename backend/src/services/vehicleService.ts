@@ -54,7 +54,6 @@ export class VehicleService {
       throw err;
     }
 
-    // Reject unknown mutation fields
     for (const key of Object.keys(payload)) {
       if (!VehicleService.ALLOWED_CREATE_FIELDS.has(key)) {
         const err = new Error(`Unknown mutation field: ${key}`);
@@ -125,7 +124,6 @@ export class VehicleService {
       throw err;
     }
 
-    // Reject unknown mutation fields
     for (const key of Object.keys(payload)) {
       if (!VehicleService.ALLOWED_UPDATE_FIELDS.has(key)) {
         const err = new Error(`Unknown mutation field on vehicle update: ${key}`);
@@ -160,7 +158,6 @@ export class VehicleService {
   }
 
   public async search(query: Record<string, unknown>): Promise<Vehicle[]> {
-    // Reject unknown query parameters
     for (const key of Object.keys(query)) {
       if (!VehicleService.ALLOWED_SEARCH_PARAMS.has(key)) {
         const err = new Error(`Unknown search parameter: ${key}`);
@@ -168,7 +165,6 @@ export class VehicleService {
         (err as any).code = "VALIDATION_ERROR";
         throw err;
       }
-      // Reject repeated/array query parameters
       if (Array.isArray(query[key])) {
         const err = new Error(`Repeated query parameter '${key}' is not permitted.`);
         (err as any).statusCode = 400;
@@ -265,7 +261,7 @@ export class VehicleService {
   }
 
   public async restock(id: string, increment: unknown): Promise<Vehicle> {
-    const current = await this.getById(id);
+    await this.getById(id);
 
     if (typeof increment !== "number" || !Number.isSafeInteger(increment) || increment <= 0) {
       const err = new Error("Restock increment must be a positive safe integer.");
@@ -274,19 +270,25 @@ export class VehicleService {
       throw err;
     }
 
-    if (current.quantity + increment > Number.MAX_SAFE_INTEGER) {
-      const err = new Error("Restock increment would exceed maximum safe integer stock.");
-      (err as any).statusCode = 400;
-      (err as any).code = "VALIDATION_ERROR";
-      throw err;
-    }
-
+    const maxSafe = Number.MAX_SAFE_INTEGER;
     const now = new Date().toISOString();
     const db = this.dbManager.getDatabase();
+
+    // Atomic SQL update with upper-bound predicate: (quantity <= MAX_SAFE_INTEGER - increment)
     const stmt = db.prepare(
-      "UPDATE vehicles SET quantity = quantity + ?, updated_at = ? WHERE id = ?"
+      "UPDATE vehicles SET quantity = quantity + ?, updated_at = ? WHERE id = ? AND (quantity <= ? - ?)"
     );
-    stmt.run(increment, now, id);
+    const result = stmt.run(increment, now, id, maxSafe, increment);
+
+    if (Number(result.changes) === 0) {
+      const current = await this.getById(id);
+      if (current.quantity + increment > maxSafe) {
+        const err = new Error("Restock increment would exceed maximum safe integer stock.");
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+    }
 
     return this.getById(id);
   }
