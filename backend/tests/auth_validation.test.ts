@@ -9,6 +9,8 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   const testDbPath = path.resolve("./data/test_auth_validation.db");
   let dbManager: DatabaseManager;
 
+  const testJwtSecret = "test_only_secret_key_at_least_32_chars_long!";
+
   beforeEach(() => {
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
@@ -25,7 +27,7 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   });
 
   it("rejects duplicate email with HTTP 409 Conflict", async () => {
-    const app = createApp({ dbManager });
+    const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
     await request(app)
       .post("/api/auth/register")
@@ -41,7 +43,7 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   });
 
   it("rejects malformed email addresses with HTTP 400", async () => {
-    const app = createApp({ dbManager });
+    const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
     const res = await request(app)
       .post("/api/auth/register")
@@ -52,7 +54,7 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   });
 
   it("rejects passwords shorter than 12 characters with HTTP 400", async () => {
-    const app = createApp({ dbManager });
+    const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
     const res = await request(app)
       .post("/api/auth/register")
@@ -63,7 +65,7 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   });
 
   it("rejects passwords longer than 128 characters with HTTP 400", async () => {
-    const app = createApp({ dbManager });
+    const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
     const longPassword = "A".repeat(129);
     const res = await request(app)
@@ -75,7 +77,7 @@ describe("TDD Slice 2: Registration Validation, Duplicates & Privilege Escalatio
   });
 
   it("prevents privilege escalation when role is injected in registration body", async () => {
-    const app = createApp({ dbManager });
+    const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
     const res = await request(app)
       .post("/api/auth/register")

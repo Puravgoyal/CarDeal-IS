@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { DatabaseManager, getDatabaseManager } from "../database/connection.js";
@@ -62,10 +65,11 @@ if (isDirectExecution) {
     process.exit(1);
   }
 
-  const dbManager = getDatabaseManager();
+  const dbPath = process.env.DATABASE_PATH || "./data/cardeal.db";
+  const dbManager = new DatabaseManager(dbPath);
   provisionAdminUser(dbManager, email, password)
     .then((admin) => {
-      console.log(`[Admin Provisioning] Successfully provisioned admin user: ${admin.email} (id: ${admin.id})`);
+      console.log(`[Admin Provisioning] Successfully provisioned admin user: ${admin.email} (id: ${admin.id}) in ${dbPath}`);
       dbManager.close();
       process.exit(0);
     })

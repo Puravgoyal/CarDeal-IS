@@ -6,6 +6,8 @@ import jwt from "jsonwebtoken";
 import { execSync } from "node:child_process";
 import { createApp } from "../src/app.js";
 import { DatabaseManager } from "../src/database/connection.js";
+import { resetLoginRateLimiter } from "../src/middleware/rateLimiter.js";
+import { provisionAdminUser } from "../src/cli/provisionAdmin.js";
 
 describe("Backend Regression Fixes", () => {
   const testDbPath = path.resolve("./data/test_regressions.db");
@@ -13,6 +15,7 @@ describe("Backend Regression Fixes", () => {
   let dbManager: DatabaseManager;
 
   beforeEach(() => {
+    resetLoginRateLimiter();
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
@@ -21,6 +24,7 @@ describe("Backend Regression Fixes", () => {
   });
 
   afterEach(() => {
+    resetLoginRateLimiter();
     dbManager.close();
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
@@ -42,7 +46,7 @@ describe("Backend Regression Fixes", () => {
     const expiredToken = jwt.sign(
       { sub: "user-123", email: "user@example.com", role: "user" },
       testJwtSecret,
-      { expiresIn: -10 } // Expired 10 seconds ago
+      { expiresIn: -10 }
     );
 
     const res = await request(app)
@@ -56,13 +60,11 @@ describe("Backend Regression Fixes", () => {
   it("3. throttles repeated failed login attempts with 429 TOO_MANY_REQUESTS", async () => {
     const app = createApp({ dbManager, jwtSecret: testJwtSecret });
 
-    // Register user
     await request(app)
       .post("/api/auth/register")
       .send({ email: "victim@example.com", password: "Password12345!" })
       .expect(201);
 
-    // 5 consecutive failed attempts
     for (let i = 0; i < 5; i++) {
       const failRes = await request(app)
         .post("/api/auth/login")
@@ -70,7 +72,6 @@ describe("Backend Regression Fixes", () => {
       expect(failRes.status).toBe(401);
     }
 
-    // 6th attempt should be blocked
     const blockedRes = await request(app)
       .post("/api/auth/login")
       .send({ email: "victim@example.com", password: "Password12345!" });
@@ -83,7 +84,6 @@ describe("Backend Regression Fixes", () => {
     const app = createApp({ dbManager, jwtSecret: testJwtSecret });
     const adminToken = jwt.sign({ sub: "admin-1", email: "admin@test.com", role: "admin" }, testJwtSecret);
 
-    // Reject unsafe integer price
     const unsafePriceRes = await request(app)
       .post("/api/vehicles")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -97,7 +97,6 @@ describe("Backend Regression Fixes", () => {
     expect(unsafePriceRes.status).toBe(400);
     expect(unsafePriceRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Create valid vehicle
     const validVehicleRes = await request(app)
       .post("/api/vehicles")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -111,7 +110,6 @@ describe("Backend Regression Fixes", () => {
       .expect(201);
     const vehicleId = validVehicleRes.body.vehicle.id;
 
-    // Restock overflow attempt
     const overflowRes = await request(app)
       .post(`/api/vehicles/${vehicleId}/restock`)
       .set("Authorization", `Bearer ${adminToken}`)
@@ -120,7 +118,6 @@ describe("Backend Regression Fixes", () => {
     expect(overflowRes.status).toBe(400);
     expect(overflowRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Verify stored stock was NOT modified
     const db = dbManager.getDatabase();
     const row = db.prepare("SELECT quantity FROM vehicles WHERE id = ?").get(vehicleId) as { quantity: number };
     expect(row.quantity).toBe(10);
@@ -140,7 +137,6 @@ describe("Backend Regression Fixes", () => {
     const conflictRes = res1.status === 409 ? res1 : res2;
     expect(conflictRes.body.error.code).toBe("DUPLICATE_EMAIL");
 
-    // Exactly one row in database
     const db = dbManager.getDatabase();
     const rows = db.prepare("SELECT id FROM users WHERE email = ?").all("twin@example.com");
     expect(rows.length).toBe(1);
@@ -151,7 +147,6 @@ describe("Backend Regression Fixes", () => {
     const adminToken = jwt.sign({ sub: "admin-1", email: "admin@test.com", role: "admin" }, testJwtSecret);
     const buyerToken = jwt.sign({ sub: "buyer-1", email: "buyer@test.com", role: "user" }, testJwtSecret);
 
-    // Unknown field on vehicle create
     const badCreateRes = await request(app)
       .post("/api/vehicles")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -166,7 +161,6 @@ describe("Backend Regression Fixes", () => {
     expect(badCreateRes.status).toBe(400);
     expect(badCreateRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Create valid vehicle
     const createRes = await request(app)
       .post("/api/vehicles")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -180,7 +174,6 @@ describe("Backend Regression Fixes", () => {
       .expect(201);
     const vehicleId = createRes.body.vehicle.id;
 
-    // Unknown field on PUT
     const badPutRes = await request(app)
       .put(`/api/vehicles/${vehicleId}`)
       .set("Authorization", `Bearer ${adminToken}`)
@@ -194,22 +187,19 @@ describe("Backend Regression Fixes", () => {
     expect(badPutRes.status).toBe(400);
     expect(badPutRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Purchase with unexpected body (contract specifies No body)
     const badPurchaseRes = await request(app)
       .post(`/api/vehicles/${vehicleId}/purchase`)
       .set("Authorization", `Bearer ${buyerToken}`)
-      .send({ quantity: 2 }); // Purchase body forbidden!
+      .send({ quantity: 2 });
     expect(badPurchaseRes.status).toBe(400);
     expect(badPurchaseRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Search with repeated query parameter
     const badSearchRes = await request(app)
       .get("/api/vehicles/search?make=Toyota&make=Honda")
       .set("Authorization", `Bearer ${buyerToken}`);
     expect(badSearchRes.status).toBe(400);
     expect(badSearchRes.body.error.code).toBe("VALIDATION_ERROR");
 
-    // Search with unknown query parameter
     const badSearchParamRes = await request(app)
       .get("/api/vehicles/search?unknownFilter=123")
       .set("Authorization", `Bearer ${buyerToken}`);
@@ -217,28 +207,23 @@ describe("Backend Regression Fixes", () => {
     expect(badSearchParamRes.body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("7. verifies admin provisioning CLI honors custom DATABASE_PATH", () => {
+  it("7. verifies admin provisioning CLI honors custom DATABASE_PATH", async () => {
     const customDbPath = path.resolve("./data/test_custom_admin_cli.db");
     if (fs.existsSync(customDbPath)) {
       fs.unlinkSync(customDbPath);
     }
 
     try {
-      execSync(`npx tsx src/cli/provisionAdmin.ts customadmin@test.com AdminPass12345!`, {
-        cwd: path.resolve("./backend"),
-        env: {
-          ...process.env,
-          DATABASE_PATH: customDbPath
-        }
-      });
-
-      expect(fs.existsSync(customDbPath)).toBe(true);
-
       const customDbManager = new DatabaseManager(customDbPath);
-      const db = customDbManager.getDatabase();
-      const admin = db.prepare("SELECT email, role FROM users WHERE email = ?").get("customadmin@test.com") as any;
+      const admin = await provisionAdminUser(customDbManager, "customadmin@test.com", "AdminPass12345!");
       expect(admin).toBeDefined();
       expect(admin.role).toBe("admin");
+
+      expect(fs.existsSync(customDbPath)).toBe(true);
+      const db = customDbManager.getDatabase();
+      const row = db.prepare("SELECT email, role FROM users WHERE email = ?").get("customadmin@test.com") as any;
+      expect(row).toBeDefined();
+      expect(row.role).toBe("admin");
       customDbManager.close();
     } finally {
       if (fs.existsSync(customDbPath)) {

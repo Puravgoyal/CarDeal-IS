@@ -6,13 +6,20 @@ import { getDatabaseManager } from "./database/connection.js";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const DATABASE_PATH = process.env.DATABASE_PATH || "./data/cardeal.db";
-const JWT_SECRET = process.env.JWT_SECRET || "cardeal_secure_dev_jwt_secret_key_at_least_32_chars!";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET || JWT_SECRET.trim().length < 32) {
+  console.error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
+  console.error("Generate a secure private secret with: openssl rand -hex 32");
+  process.exit(1);
+}
+
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 
 const dbManager = getDatabaseManager(DATABASE_PATH);
-// Initialize database schema and migrations
 dbManager.getDatabase();
 
-const app = createApp({ dbManager, jwtSecret: JWT_SECRET });
+const app = createApp({ dbManager, jwtSecret: JWT_SECRET, jwtExpiresIn: JWT_EXPIRES_IN });
 
 const server = app.listen(PORT, () => {
   console.log(`[CarDeal IS Backend] Server running on http://localhost:${PORT}`);

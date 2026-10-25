@@ -15,7 +15,11 @@ declare global {
   }
 }
 
-export function createAuthMiddleware(jwtSecret: string = process.env.JWT_SECRET || "cardeal_default_dev_secret_key_32_chars") {
+export function createAuthMiddleware(jwtSecret: string) {
+  if (!jwtSecret || jwtSecret.trim().length < 32) {
+    throw new Error("JWT secret must be explicitly configured with at least 32 characters.");
+  }
+
   const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

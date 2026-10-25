@@ -27,7 +27,7 @@ describe("TDD Slice 1: User Registration Persistence", () => {
   });
 
   it("persists a newly registered regular user in SQLite with a secure password hash", async () => {
-    const app = createApp({ dbManager, jwtSecret: "test_secret_key_123456789012345" });
+    const app = createApp({ dbManager, jwtSecret: "test_only_secret_key_at_least_32_chars_long!" });
 
     const payload = {
       email: "candidate@example.com",

@@ -12,32 +12,11 @@ export interface Vehicle {
   updated_at: string;
 }
 
-export interface CreateVehicleInput {
-  make: unknown;
-  model: unknown;
-  category: unknown;
-  price: unknown;
-  quantity: unknown;
-}
-
-export interface UpdateVehicleInput {
-  make: unknown;
-  model: unknown;
-  category: unknown;
-  price: unknown;
-  quantity?: unknown;
-}
-
-export interface SearchVehicleQuery {
-  make?: unknown;
-  model?: unknown;
-  category?: unknown;
-  minPrice?: unknown;
-  maxPrice?: unknown;
-}
-
 export class VehicleService {
   private dbManager: DatabaseManager;
+  private static readonly ALLOWED_CREATE_FIELDS = new Set(["make", "model", "category", "price", "quantity"]);
+  private static readonly ALLOWED_UPDATE_FIELDS = new Set(["make", "model", "category", "price"]);
+  private static readonly ALLOWED_SEARCH_PARAMS = new Set(["make", "model", "category", "minPrice", "maxPrice"]);
 
   constructor(dbManager: DatabaseManager) {
     this.dbManager = dbManager;
@@ -53,9 +32,9 @@ export class VehicleService {
     return val.trim();
   }
 
-  private validateNonNegativeInteger(val: unknown, fieldName: string): number {
-    if (typeof val !== "number" || !Number.isInteger(val) || val < 0) {
-      const err = new Error(`${fieldName} must be a non-negative integer.`);
+  private validateNonNegativeSafeInteger(val: unknown, fieldName: string): number {
+    if (typeof val !== "number" || !Number.isSafeInteger(val) || val < 0) {
+      const err = new Error(`${fieldName} must be a non-negative safe integer.`);
       (err as any).statusCode = 400;
       (err as any).code = "VALIDATION_ERROR";
       throw err;
@@ -67,12 +46,29 @@ export class VehicleService {
     return str.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
   }
 
-  public async create(input: CreateVehicleInput): Promise<Vehicle> {
-    const make = this.validateTextField(input.make, "make");
-    const model = this.validateTextField(input.model, "model");
-    const category = this.validateTextField(input.category, "category");
-    const price = this.validateNonNegativeInteger(input.price, "price");
-    const quantity = this.validateNonNegativeInteger(input.quantity, "quantity");
+  public async create(payload: Record<string, unknown>): Promise<Vehicle> {
+    if (!payload || typeof payload !== "object") {
+      const err = new Error("Invalid vehicle payload.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    // Reject unknown mutation fields
+    for (const key of Object.keys(payload)) {
+      if (!VehicleService.ALLOWED_CREATE_FIELDS.has(key)) {
+        const err = new Error(`Unknown mutation field: ${key}`);
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+    }
+
+    const make = this.validateTextField(payload.make, "make");
+    const model = this.validateTextField(payload.model, "model");
+    const category = this.validateTextField(payload.category, "category");
+    const price = this.validateNonNegativeSafeInteger(payload.price, "price");
+    const quantity = this.validateNonNegativeSafeInteger(payload.quantity, "quantity");
 
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -114,18 +110,35 @@ export class VehicleService {
     return vehicle;
   }
 
-  public async update(id: string, input: UpdateVehicleInput): Promise<Vehicle> {
-    if (input.quantity !== undefined) {
+  public async update(id: string, payload: Record<string, unknown>): Promise<Vehicle> {
+    if (!payload || typeof payload !== "object") {
+      const err = new Error("Invalid vehicle update payload.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    if (payload.quantity !== undefined) {
       const err = new Error("Vehicle quantity cannot be modified via PUT. Use restock or purchase endpoints.");
       (err as any).statusCode = 400;
       (err as any).code = "VALIDATION_ERROR";
       throw err;
     }
 
-    const make = this.validateTextField(input.make, "make");
-    const model = this.validateTextField(input.model, "model");
-    const category = this.validateTextField(input.category, "category");
-    const price = this.validateNonNegativeInteger(input.price, "price");
+    // Reject unknown mutation fields
+    for (const key of Object.keys(payload)) {
+      if (!VehicleService.ALLOWED_UPDATE_FIELDS.has(key)) {
+        const err = new Error(`Unknown mutation field on vehicle update: ${key}`);
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+    }
+
+    const make = this.validateTextField(payload.make, "make");
+    const model = this.validateTextField(payload.model, "model");
+    const category = this.validateTextField(payload.category, "category");
+    const price = this.validateNonNegativeSafeInteger(payload.price, "price");
 
     await this.getById(id);
 
@@ -146,7 +159,24 @@ export class VehicleService {
     stmt.run(id);
   }
 
-  public async search(query: SearchVehicleQuery): Promise<Vehicle[]> {
+  public async search(query: Record<string, unknown>): Promise<Vehicle[]> {
+    // Reject unknown query parameters
+    for (const key of Object.keys(query)) {
+      if (!VehicleService.ALLOWED_SEARCH_PARAMS.has(key)) {
+        const err = new Error(`Unknown search parameter: ${key}`);
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+      // Reject repeated/array query parameters
+      if (Array.isArray(query[key])) {
+        const err = new Error(`Repeated query parameter '${key}' is not permitted.`);
+        (err as any).statusCode = 400;
+        (err as any).code = "VALIDATION_ERROR";
+        throw err;
+      }
+    }
+
     let sql = "SELECT * FROM vehicles WHERE 1=1";
     const params: unknown[] = [];
 
@@ -168,8 +198,8 @@ export class VehicleService {
     let minPriceNum: number | undefined;
     if (query.minPrice !== undefined && query.minPrice !== "") {
       const num = Number(query.minPrice);
-      if (!Number.isInteger(num) || num < 0) {
-        const err = new Error("minPrice must be a non-negative integer paise value.");
+      if (!Number.isSafeInteger(num) || num < 0) {
+        const err = new Error("minPrice must be a non-negative safe integer paise value.");
         (err as any).statusCode = 400;
         (err as any).code = "VALIDATION_ERROR";
         throw err;
@@ -182,8 +212,8 @@ export class VehicleService {
     let maxPriceNum: number | undefined;
     if (query.maxPrice !== undefined && query.maxPrice !== "") {
       const num = Number(query.maxPrice);
-      if (!Number.isInteger(num) || num < 0) {
-        const err = new Error("maxPrice must be a non-negative integer paise value.");
+      if (!Number.isSafeInteger(num) || num < 0) {
+        const err = new Error("maxPrice must be a non-negative safe integer paise value.");
         (err as any).statusCode = 400;
         (err as any).code = "VALIDATION_ERROR";
         throw err;
@@ -207,7 +237,14 @@ export class VehicleService {
     return stmt.all(...params) as Vehicle[];
   }
 
-  public async purchase(id: string): Promise<Vehicle> {
+  public async purchase(id: string, body?: unknown): Promise<Vehicle> {
+    if (body && typeof body === "object" && Object.keys(body).length > 0) {
+      const err = new Error("Purchase endpoint does not accept a request body.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
     await this.getById(id);
 
     const now = new Date().toISOString();
@@ -228,10 +265,17 @@ export class VehicleService {
   }
 
   public async restock(id: string, increment: unknown): Promise<Vehicle> {
-    await this.getById(id);
+    const current = await this.getById(id);
 
-    if (typeof increment !== "number" || !Number.isInteger(increment) || increment <= 0 || increment > 1_000_000) {
-      const err = new Error("Restock increment must be a positive integer.");
+    if (typeof increment !== "number" || !Number.isSafeInteger(increment) || increment <= 0) {
+      const err = new Error("Restock increment must be a positive safe integer.");
+      (err as any).statusCode = 400;
+      (err as any).code = "VALIDATION_ERROR";
+      throw err;
+    }
+
+    if (current.quantity + increment > Number.MAX_SAFE_INTEGER) {
+      const err = new Error("Restock increment would exceed maximum safe integer stock.");
       (err as any).statusCode = 400;
       (err as any).code = "VALIDATION_ERROR";
       throw err;
