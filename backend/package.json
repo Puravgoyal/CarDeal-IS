@@ -1,6 +1,7 @@
 {
   "name": "cardeal-is-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend API for Car Dealership Inventory System",
   "private": true,
   "main": "dist/server.js",

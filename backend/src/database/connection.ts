@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { INITIAL_SCHEMA } from "./schema.js";
 
-const require = createRequire(import.meta.url);
-const { DatabaseSync } = require("node:sqlite");
+const nodeRequire = createRequire(import.meta.url);
+const { DatabaseSync } = nodeRequire("node:sqlite");
 
 export interface SqliteDatabase {
   exec(sql: string): void;
